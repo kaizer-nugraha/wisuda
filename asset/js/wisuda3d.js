@@ -18,6 +18,7 @@
   try {
     renderer = new THREE.WebGLRenderer({canvas: canvas, antialias:true, alpha:true, powerPreference:'high-performance'});
   } catch(e){ fallback.style.display='block'; return; }
+  canvas.addEventListener('webglcontextlost', function(e){ e.preventDefault(); }, false);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1990,20 +1991,23 @@
     toggleBtn.innerHTML = state.opened ? '🎓&nbsp; Tutup Wisuda' : '✉&nbsp; Buka Amplop';
   }
 
-  /* ---------- Sound Effects & Backsound (Backsound, Cat, Human Touch & Dual Spatial Celebration) ---------- */
+  /* ---------- Sound Effects & Backsound (iOS/macOS WebKit GainNode + Spatial Celebration) ---------- */
   var sfxBacksound = new Audio('asset/sound/backsound.mp3');
   var sfxCat = new Audio('asset/sound/cat-klick.mp3');
   var sfxTouchPop = new Audio('asset/sound/touce_pop_efect.mp3');
   var sfxCelebration = new Audio('asset/sound/celebration.mp3');
   var sfxCelebration1 = new Audio('asset/sound/celebration1.mp3');
-  sfxBacksound.preload = 'auto';
+  [sfxBacksound, sfxCat, sfxTouchPop, sfxCelebration, sfxCelebration1].forEach(function(a){
+    a.preload = 'auto';
+    a.playsInline = true;
+    try {
+      a.setAttribute('playsinline', '');
+      a.setAttribute('webkit-playsinline', '');
+    } catch(e){}
+  });
   sfxBacksound.loop = true;
   sfxBacksound.volume = 0;
-  sfxCat.preload = 'auto';
-  sfxTouchPop.preload = 'auto';
-  sfxCelebration.preload = 'auto';
   sfxCelebration.loop = true;
-  sfxCelebration1.preload = 'auto';
   sfxCelebration1.loop = true;
   sfxCat.volume = 0.88;
   sfxTouchPop.volume = 0.88;
@@ -2017,11 +2021,59 @@
   var audioMuted = false;
   var soundBtn = document.getElementById('soundBtn');
 
+  // Web Audio API GainNode bridge: memastikan dynamic volume fade-in/fade-out berfungsi 100%
+  // di iPhone / iPad (iOS Safari) & macOS Safari (karena iOS mengunci HTMLAudioElement.volume)
+  var webAudioCtx = null;
+  var bgmGain = null, celebGain = null, celeb1Gain = null;
+  function initWebAudioGain(){
+    if (webAudioCtx || window.location.protocol === 'file:') return;
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    try {
+      webAudioCtx = new AC();
+      var srcBgm = webAudioCtx.createMediaElementSource(sfxBacksound);
+      bgmGain = webAudioCtx.createGain();
+      bgmGain.gain.value = 0;
+      srcBgm.connect(bgmGain);
+      bgmGain.connect(webAudioCtx.destination);
+
+      var srcC0 = webAudioCtx.createMediaElementSource(sfxCelebration);
+      celebGain = webAudioCtx.createGain();
+      celebGain.gain.value = 0;
+      srcC0.connect(celebGain);
+      celebGain.connect(webAudioCtx.destination);
+
+      var srcC1 = webAudioCtx.createMediaElementSource(sfxCelebration1);
+      celeb1Gain = webAudioCtx.createGain();
+      celeb1Gain.gain.value = 0;
+      srcC1.connect(celeb1Gain);
+      celeb1Gain.connect(webAudioCtx.destination);
+    } catch(e){}
+  }
+  function resumeWebAudio(){
+    initWebAudioGain();
+    if (webAudioCtx && webAudioCtx.state === 'suspended'){
+      try { webAudioCtx.resume(); } catch(e){}
+    }
+  }
+  function setTrackVolume(audioEl, gainNode, v){
+    var clamped = clamp(v, 0, 1);
+    if (gainNode){
+      gainNode.gain.value = clamped;
+      try { audioEl.volume = 1; } catch(e){}
+    } else {
+      try { audioEl.volume = clamped; } catch(e){}
+    }
+  }
+
   function unlockCelebrationAudio(){
+    resumeWebAudio();
     if (celebAudioUnlocked) return;
     celebAudioUnlocked = true;
-    [sfxCelebration, sfxCelebration1].forEach(function(aud){
+    [sfxCelebration, sfxCelebration1].forEach(function(aud, idx){
       try {
+        var gNode = idx === 0 ? celebGain : celeb1Gain;
+        setTrackVolume(aud, gNode, 0);
         aud.muted = true;
         var p = aud.play();
         if (p && p.then){
@@ -2045,6 +2097,7 @@
   }
 
   function startBacksound(){
+    resumeWebAudio();
     if (audioMuted) return;
     try {
       sfxBacksound.muted = false;
@@ -2353,13 +2406,13 @@
     try {
       if (state.opened && !audioMuted && !document.hidden){
         sfxBacksound.muted = false;
-        sfxBacksound.volume = clamp(bgmCurVol, 0, 1);
+        setTrackVolume(sfxBacksound, bgmGain, bgmCurVol);
         if (bgmCurVol > 0.003 && sfxBacksound.paused){
           var bp = sfxBacksound.play();
           if (bp && bp.catch) bp.catch(function(){});
         }
       } else {
-        sfxBacksound.volume = 0;
+        setTrackVolume(sfxBacksound, bgmGain, 0);
         if (!sfxBacksound.paused) sfxBacksound.pause();
       }
     } catch(e){}
@@ -2367,8 +2420,8 @@
     if (!state.opened || audioMuted || document.hidden){
       celebCurVol = 0;
       try {
-        sfxCelebration.volume = 0;
-        sfxCelebration1.volume = 0;
+        setTrackVolume(sfxCelebration, celebGain, 0);
+        setTrackVolume(sfxCelebration1, celeb1Gain, 0);
         if (!sfxCelebration.paused) sfxCelebration.pause();
         if (!sfxCelebration1.paused) sfxCelebration1.pause();
       } catch(e){}
@@ -2401,8 +2454,8 @@
         var vLayer = clamp(celebCurVol * 0.92, 0, 1);
         sfxCelebration.muted = false;
         sfxCelebration1.muted = false;
-        sfxCelebration.volume = vMain;
-        sfxCelebration1.volume = vLayer;
+        setTrackVolume(sfxCelebration, celebGain, vMain);
+        setTrackVolume(sfxCelebration1, celeb1Gain, vLayer);
         if (sfxCelebration.paused){
           var playP = sfxCelebration.play();
           if (playP && playP.catch) playP.catch(function(){});
@@ -2412,8 +2465,8 @@
           if (playP1 && playP1.catch) playP1.catch(function(){});
         }
       } else {
-        sfxCelebration.volume = 0;
-        sfxCelebration1.volume = 0;
+        setTrackVolume(sfxCelebration, celebGain, 0);
+        setTrackVolume(sfxCelebration1, celeb1Gain, 0);
         if (!sfxCelebration.paused) sfxCelebration.pause();
         if (!sfxCelebration1.paused) sfxCelebration1.pause();
         if (fS < 5.8){
