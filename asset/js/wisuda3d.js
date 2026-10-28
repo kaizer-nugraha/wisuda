@@ -108,20 +108,23 @@
   }
   var activePointers = {};
   var pinchDist = 0;
+  var touchScrollVel = 0;
   function pointerDist(){
     var pts = Object.keys(activePointers).map(function(k){ return activePointers[k]; });
     if (pts.length < 2) return 0;
     return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
   }
   canvas.addEventListener('pointerdown', function(e){
-    activePointers[e.pointerId] = {x:e.clientX, y:e.clientY, type:e.pointerType};
+    activePointers[e.pointerId] = {
+      x:e.clientX, y:e.clientY,
+      startX:e.clientX, startY:e.clientY,
+      axis:null, type:e.pointerType
+    };
     isDragging = true;
-    yawVel = 0; pitchVel = 0;
+    yawVel = 0; pitchVel = 0; touchScrollVel = 0;
     lastMoveTime = performance.now();
     if (Object.keys(activePointers).length === 2) pinchDist = pointerDist();
-    if (e.pointerType !== 'touch'){
-      try { canvas.setPointerCapture(e.pointerId); } catch(err){}
-    }
+    try { canvas.setPointerCapture(e.pointerId); } catch(err){}
   });
   canvas.addEventListener('pointermove', function(e){
     var p = activePointers[e.pointerId];
@@ -133,8 +136,27 @@
       var d = pointerDist();
       if (d > 0){ dollyBy(pinchDist / d); pinchDist = d; }
     } else if (n === 1){
-      if (e.pointerType === 'touch'){ rotateBy(dx * 0.85, 0); }
-      else { rotateBy(dx, dy); }
+      if (e.pointerType === 'touch'){
+        if (!p.axis){
+          var tdx = Math.abs(e.clientX - p.startX);
+          var tdy = Math.abs(e.clientY - p.startY);
+          if (tdx + tdy > 6){
+            p.axis = (state.opened && tdy >= tdx * 0.95) ? 'y' : 'x';
+          }
+        }
+        if (p.axis === 'y' && state.opened){
+          var scrollStep = -dy * 2.15;
+          virtualScrollY = clamp(virtualScrollY + scrollStep, 0, maxScroll);
+          touchScrollVel = touchScrollVel * 0.52 + scrollStep * 0.48;
+          wheelSyncing = true;
+          window.scrollTo(0, virtualScrollY);
+          lastMoveTime = performance.now();
+        } else if (p.axis === 'x' || !state.opened){
+          rotateBy(dx * 0.85, dy * 0.25);
+        }
+      } else {
+        rotateBy(dx, dy);
+      }
     }
   });
   function endPointer(e){
@@ -142,10 +164,11 @@
     pinchDist = 0;
     if (Object.keys(activePointers).length === 0){
       isDragging = false;
-      // Jika mouse ditahan diam sebelum dilepas, hentikan inersia agar tidak meluncur sendiri
-      if (performance.now() - lastMoveTime > 65){
+      // Jika jari/mouse ditahan diam sebelum dilepas, hentikan inersia agar tidak meluncur sendiri
+      if (performance.now() - lastMoveTime > 75){
         yawVel = 0;
         pitchVel = 0;
+        touchScrollVel = 0;
       }
     }
     if (e && e.pointerId != null){
@@ -3903,6 +3926,15 @@
     var dt = Math.min(clock.getDelta(), 0.05);
     state.t += dt;
     frame++;
+
+    // Mobile touch-swipe vertical inertia (60 FPS smooth momentum scroll)
+    if (!isDragging && state.opened && Math.abs(touchScrollVel) > 0.15){
+      var tScale = dt * 60;
+      virtualScrollY = clamp(virtualScrollY + touchScrollVel * tScale, 0, maxScroll);
+      touchScrollVel *= Math.pow(0.92, tScale);
+      wheelSyncing = true;
+      window.scrollTo(0, virtualScrollY);
+    }
 
     // Scroll → float stop index (60 FPS exponential damping tanpa layout thrashing)
     var fTarget = clamp01(getScrollY() / maxScroll) * (STOPS - 1);
