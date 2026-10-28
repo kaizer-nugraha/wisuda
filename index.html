@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark light" />
+<meta name="theme-color" content="#0d1326" />
+<meta name="description" content="Persembahan Istimewa Wisuda 3D Interaktif 360° — Ikka Rizanita Anggraini, S.Keb. (Sarjana Kebidanan UNJANI 2026)." />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Wisuda 3D — Ikka Rizanita Anggraini, S.Keb. (UNJANI 2026)" />
+<meta property="og:description" content="Jelajahi perjalanan 3D interaktif 360° persembahan wisuda Sarjana Kebidanan Ikka Rizanita Anggraini, S.Keb. — Universitas Jenderal Achmad Yani 2026." />
+<meta property="og:image" content="asset/images/1.png" />
+<link rel="icon" href="data:," />
+<title>Wisuda 3D — Ikka Rizanita Anggraini, S.Keb. (UNJANI 2026)</title>
+<script>document.documentElement.className += ' js';</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="asset/css/wisuda3d.css">
+</head>
+<body class="locked">
+<div id="stage">
+  <canvas id="scene" aria-label="Perjalanan 3D interaktif: amplop yang bisa dibuka, lalu kamera menyusuri persembahan wisuda Ikka Rizanita Anggraini, S.Keb. UNJANI 2026"></canvas>
+
+  <div class="topbar">
+    <div class="badges">
+      <div class="badge dummy" style="background:linear-gradient(180deg,#b8913f,#e8c77a);color:#1d1428;border-color:rgba(232,199,122,.6);font-weight:800"><span class="dot" style="background:#d46a8a;box-shadow:0 0 12px #d46a8a"></span> SARJANA KEBIDANAN · UNJANI 2026 · 360° 3D</div>
+    </div>
+    <div class="hint">Seret 360° ke segala arah untuk memutar kamera &nbsp;•&nbsp; Cubit / tombol + − untuk zoom<br>Scroll / usap ke atas–bawah untuk menjelajah &nbsp;•&nbsp; Ketuk amplop untuk membuka</div>
+  </div>
+
+  <section class="names fade-ui" aria-live="polite">
+    <div class="over" style="color:var(--sun);letter-spacing:.28em;font-weight:700">SELAMAT WISUDA</div>
+    <h1 style="font-family:'Cormorant Garamond',Georgia,serif;font-weight:600">Ikka Rizanita Anggraini <em>S.Keb.</em></h1>
+    <p style="color:var(--pink);font-size:15px">Universitas Jenderal Achmad Yani · 2026</p>
+    <div class="line"></div>
+  </section>
+
+  <div class="prompt fade-ui">
+    <strong style="font-family:'Cormorant Garamond',Georgia,serif;font-size:28px">Teruntuk Yang Tercinta</strong>
+    <span>Ketuk amplop ijazah untuk membuka persembahan wisuda</span>
+    <span class="pulse" aria-hidden="true"></span>
+  </div>
+
+  <form id="rsvpBar">
+    <label class="sr-only" for="rsvpName">Nama tamu</label>
+    <input id="rsvpName" type="text" autocomplete="off" placeholder="Tulis ucapan / doamu untuk Ikka...">
+    <button type="submit">Kirim</button>
+  </form>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <div id="lightbox" aria-hidden="true" role="dialog" aria-label="Foto galeri diperbesar">
+    <button id="lbClose" type="button" aria-label="Tutup foto">&#10005;</button>
+    <figure>
+      <img id="lbImg" src="asset/images/1.png" alt="Momen Terindah Menuju Sarjana — Ikka Rizanita Anggraini, S.Keb.">
+      <figcaption id="lbCap">Perjuangan Tugas Akhir - Ikka Rizanita Anggraini, S.Keb.</figcaption>
+    </figure>
+    <button class="lbnav" id="lbPrev" type="button" aria-label="Foto sebelumnya">&#8249;</button>
+    <button class="lbnav" id="lbNext" type="button" aria-label="Foto berikutnya">&#8250;</button>
+  </div>
+
+  <div class="zoomcluster" role="group" aria-label="Zoom kamera">
+    <button class="zbtn" id="zoomIn" type="button" aria-label="Perbesar">+</button>
+    <button class="zbtn" id="zoomOut" type="button" aria-label="Perkecil">−</button>
+  </div>
+
+  <nav id="stopNav" aria-label="Navigasi panggung 3D"></nav>
+
+  <div class="controls">
+    <button class="btn" id="toggleBtn" type="button">✉&nbsp; Buka Amplop</button>
+    <button class="btn secondary" id="spinBtn" type="button" aria-pressed="false">↻ Putar 360°</button>
+    <button class="btn secondary" id="resetBtn" type="button">⌂ Atur Ulang Kamera</button>
+    <button class="btn secondary" id="soundBtn" type="button" aria-pressed="false" aria-label=" Pengaturan Suara">🔊 Suara</button>
+  </div>
+
+  <div id="loader">
+    <div>
+      <div class="ring"></div>
+      <p>Menyiapkan adegan 3D…</p>
+      <p id="fallback">Three.js belum termuat. Periksa koneksi internet lalu muat ulang halaman ini.</p>
+    </div>
+  </div>
+</div>
+
+<div id="track" aria-hidden="true"></div>
+
+  <script src="asset/js/three.min.js"></script>
+  <script src="asset/js/fonts-bundle.js"></script>
+  <script src="asset/js/wisuda3d.js"></script>
+</body>
+</html>
+
+</html>
